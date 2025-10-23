@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Security App Theme - Dark Blue/Black Professional */
+    --background: 225 30% 5%;
+    --foreground: 210 20% 98%;
+
+    --card: 225 25% 8%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 225 30% 6%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 20% 15%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 225 15% 12%;
+    --muted-foreground: 215 15% 60%;
+
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Panic Button - Vibrant Red */
+    --panic: 0 85% 55%;
+    --panic-foreground: 0 0% 100%;
+    --panic-glow: 0 85% 55%;
+
+    /* Success/Active States */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 225 20% 15%;
+    --input: 225 20% 15%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(225 30% 8%), hsl(225 25% 5%));
+    --gradient-card: linear-gradient(135deg, hsl(225 25% 10%), hsl(225 25% 8%));
+    --gradient-panic: linear-gradient(135deg, hsl(0 85% 55%), hsl(0 75% 45%));
+    
+    /* Shadows */
+    --shadow-lg: 0 20px 40px -15px hsl(225 30% 3% / 0.5);
+    --shadow-panic: 0 0 40px hsl(0 85% 55% / 0.4);
+    --shadow-glow: 0 0 20px hsl(217 91% 60% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Custom component styles */
+  .bg-gradient-card {
+    background: var(--gradient-card);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .bg-panic {
+    background-color: hsl(var(--panic));
+  }
+  
+  .text-panic {
+    color: hsl(var(--panic));
+  }
+  
+  .border-panic {
+    border-color: hsl(var(--panic));
+  }
+}
