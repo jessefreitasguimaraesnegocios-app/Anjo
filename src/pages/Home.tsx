@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, AlertCircle, Camera, Mic, MapPin, Activity, Square, Play, Download } from 'lucide-react';
-import { toast } from 'sonner';
+import { Shield, AlertCircle, Camera, Mic, MapPin, Activity, Square, Play } from 'lucide-react';
 import { useDevices } from '@/hooks/useDevices';
 import { useRecordings } from '@/hooks/useRecordings';
+// import { useGlobalRecording } from '@/hooks/useGlobalRecording';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface RecordingState {
@@ -16,15 +16,6 @@ interface RecordingState {
   locationWatchId: number | null;
   isRecording: boolean;
   recordingType: 'video' | 'audio' | 'location' | 'panic' | null;
-}
-
-interface SavedRecording {
-  id: string;
-  type: 'video' | 'audio' | 'location';
-  blob: Blob;
-  fileName: string;
-  duration: number;
-  timestamp: Date;
 }
 
 export default function Home() {
@@ -46,12 +37,16 @@ export default function Home() {
   const [locationData, setLocationData] = useState<GeolocationPosition | null>(null);
   const [locationAddress, setLocationAddress] = useState<string>('');
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
+  const [recordingTimeLimit, setRecordingTimeLimit] = useState(1); // Tempo limite em minutos
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const videoChunksRef = useRef<Blob[]>([]);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // const isRecordingPersistentRef = useRef(false);
+  
+  // const { state: globalState, startPersistentRecording } = useGlobalRecording();
 
   const { getDevices } = useDevices();
   const { createRecording, updateRecording } = useRecordings();
@@ -67,16 +62,180 @@ export default function Home() {
     }
   });
 
+  // Configurar persistência de gravações
+  // useEffect(() => {
+  //   const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  //     if (isRecordingPersistentRef.current) {
+  //       event.preventDefault();
+  //       event.returnValue = 'Uma gravação está em andamento. Tem certeza que deseja sair?';
+  //       return 'Uma gravação está em andamento. Tem certeza que deseja sair?';
+  //     }
+  //   };
+
+  //   const handleVisibilityChange = () => {
+  //     if (document.hidden && isRecordingPersistentRef.current) {
+  //       // App foi minimizado, mas gravação continua
+  //       console.log('App minimizado, gravação continua em background');
+  //     }
+  //   };
+
+  //   const handlePageHide = () => {
+  //     if (isRecordingPersistentRef.current) {
+  //       // Tentar manter gravação ativa
+  //       console.log('Página sendo fechada, tentando manter gravação');
+  //     }
+  //   };
+
+  //   // Adicionar listeners
+  //   window.addEventListener('beforeunload', handleBeforeUnload);
+  //   document.addEventListener('visibilitychange', handleVisibilityChange);
+  //   window.addEventListener('pagehide', handlePageHide);
+
+  //   // Cleanup
+  //   return () => {
+  //     window.removeEventListener('beforeunload', handleBeforeUnload);
+  //     document.removeEventListener('visibilitychange', handleVisibilityChange);
+  //     window.removeEventListener('pagehide', handlePageHide);
+  //   };
+  // }, []);
+
   // Create recording mutation
   const createRecordingMutation = useMutation({
     mutationFn: createRecording,
     onSuccess: (recording) => {
       queryClient.invalidateQueries({ queryKey: ['recordings'] });
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', 'Gravação iniciada com sucesso!');
+      }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Erro ao iniciar gravação');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', error.message || 'Erro ao iniciar gravação');
+      }
     },
   });
+
+  // Expor mutation globalmente para o hook de gravação
+  // useEffect(() => {
+  //   (window as any).createRecordingMutation = createRecordingMutation;
+  //   (window as any).currentDeviceId = devices.length > 0 ? devices[0].id : 'default-device';
+    
+  //   return () => {
+  //     delete (window as any).createRecordingMutation;
+  //     delete (window as any).currentDeviceId;
+  //   };
+  // }, [createRecordingMutation, devices]);
+
+  const handlePanicButton = async () => {
+    if (isPanicActive) {
+      // Não permitir cancelar - gravação deve completar o tempo definido
+      if ((window as any).showNotification) {
+        (window as any).showNotification('warning', `Gravação em andamento! Aguarde ${recordingTimeLimit} minutos para completar.`);
+      }
+      return;
+    }
+
+    try {
+      // Ativar modo pânico
+      setIsPanicActive(true);
+      setActiveFeatures({ camera: true, audio: true, location: true });
+      
+      // Marcar gravação como persistente
+      // isRecordingPersistentRef.current = true;
+      
+      // Iniciar vídeo COM áudio + localização
+      await Promise.all([
+        startVideoWithAudioRecording(),
+        startLocationTracking()
+      ]);
+
+      // Criar registro no banco
+      const deviceId = devices.length > 0 ? devices[0].id : 'default-device';
+      
+      // Para modo pânico, vamos criar um blob combinado
+      // Por enquanto, vamos salvar sem blob até implementar a combinação
+      createRecordingMutation.mutate({
+        device_id: deviceId,
+        type: 'panic',
+        duration: recordingTimeLimit * 60, // Duração em segundos
+        size: 0, // Será calculado quando o arquivo for criado
+      });
+      
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', `Modo pânico ativado! Gravação por ${recordingTimeLimit} minutos iniciada.`);
+      }
+      
+      // Parar automaticamente após o tempo definido
+      recordingTimeoutRef.current = setTimeout(() => {
+        stopPanicRecording();
+      }, recordingTimeLimit * 60 * 1000); // Converter minutos para milissegundos
+      
+    } catch (error) {
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', 'Erro ao ativar modo pânico');
+      }
+      setIsPanicActive(false);
+      setActiveFeatures({ camera: false, audio: false, location: false });
+      // isRecordingPersistentRef.current = false;
+    }
+  };
+
+  const handleFeatureToggle = async (feature: 'camera' | 'audio' | 'location') => {
+    const newState = !activeFeatures[feature];
+    
+    if (activeFeatures[feature]) {
+      // Não permitir cancelar - gravação deve completar o tempo definido
+      if ((window as any).showNotification) {
+        (window as any).showNotification('warning', `Gravação de ${feature} em andamento! Aguarde ${recordingTimeLimit} minutos para completar.`);
+      }
+      return;
+    }
+
+    setActiveFeatures(prev => ({ ...prev, [feature]: newState }));
+
+    if (newState) {
+      try {
+        // Marcar gravação como persistente
+        // isRecordingPersistentRef.current = true;
+        
+        if (feature === 'camera') {
+          await startVideoOnlyRecording();
+        } else if (feature === 'audio') {
+          await startAudioRecording();
+        } else if (feature === 'location') {
+          await startLocationTracking();
+        }
+
+        // Criar registro no banco
+        const recordingType = feature === 'camera' ? 'video' : 
+                            feature === 'audio' ? 'audio' : 'location';
+        const deviceId = devices.length > 0 ? devices[0].id : 'default-device';
+        
+        createRecordingMutation.mutate({
+          device_id: deviceId,
+          type: recordingType,
+          duration: recordingTimeLimit * 60, // Duração em segundos
+          size: 0, // Será calculado quando o arquivo for criado
+        });
+        
+        if ((window as any).showNotification) {
+          (window as any).showNotification('success', `Gravação de ${feature} iniciada por ${recordingTimeLimit} minutos!`);
+        }
+        
+        // Parar automaticamente após o tempo definido
+        recordingTimeoutRef.current = setTimeout(() => {
+          stopFeatureRecording(feature);
+        }, recordingTimeLimit * 60 * 1000);
+        
+      } catch (error) {
+        if ((window as any).showNotification) {
+          (window as any).showNotification('error', `Erro ao ativar ${feature}`);
+        }
+        setActiveFeatures(prev => ({ ...prev, [feature]: false }));
+        // isRecordingPersistentRef.current = false;
+      }
+    }
+  };
 
   // Update recording mutation
   const updateRecordingMutation = useMutation({
@@ -84,9 +243,14 @@ export default function Home() {
       updateRecording(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recordings'] });
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', 'Gravação atualizada com sucesso!');
+      }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Erro ao atualizar gravação');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', error.message || 'Erro ao atualizar gravação');
+      }
     },
   });
 
@@ -184,24 +348,21 @@ export default function Home() {
           return;
         }
         
-        // Salvar gravação para download posterior
-        const recording: SavedRecording = {
-          id: `video_${Date.now()}`,
+        // Salvar gravação no banco de dados
+        createRecordingMutation.mutate({
           type: 'video',
-          blob,
-          fileName: `video_com_audio_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`,
+          device_id: devices[0]?.id || 'default',
           duration: recordingDuration,
-          timestamp: new Date()
-        };
-        
-        setSavedRecordings(prev => [...prev, recording]);
+          size: Math.round(blob.size / 1024 / 1024), // MB
+          blob: blob, // Passar o blob real
+        });
         
         // Parar stream
         stream.getTracks().forEach(track => track.stop());
         
-        toast.success('Vídeo com áudio gravado!', {
-          description: `Arquivo criado: ${(blob.size / 1024 / 1024).toFixed(2)} MB`
-        });
+        if ((window as any).showNotification) {
+          (window as any).showNotification('success', `Vídeo com áudio gravado! Arquivo criado: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+        }
       };
 
       recorder.start();
@@ -221,7 +382,9 @@ export default function Home() {
 
       return recorder;
     } catch (error) {
-      toast.error('Erro ao iniciar gravação de vídeo com áudio');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', 'Erro ao iniciar gravação de vídeo com áudio');
+      }
       throw error;
     }
   };
@@ -268,23 +431,21 @@ export default function Home() {
         }
         
         // Salvar gravação para download posterior
-        const recording: SavedRecording = {
-          id: `video_${Date.now()}`,
+        // Salvar gravação no banco de dados
+        createRecordingMutation.mutate({
           type: 'video',
-          blob,
-          fileName: `video_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`,
+          device_id: devices[0]?.id || 'default',
           duration: recordingDuration,
-          timestamp: new Date()
-        };
-        
-        setSavedRecordings(prev => [...prev, recording]);
+          size: Math.round(blob.size / 1024 / 1024), // MB
+          blob: blob, // Passar o blob real
+        });
         
         // Parar stream
         stream.getTracks().forEach(track => track.stop());
         
-        toast.success('Vídeo gravado!', {
-          description: `Arquivo criado: ${(blob.size / 1024 / 1024).toFixed(2)} MB`
-        });
+        if ((window as any).showNotification) {
+          (window as any).showNotification('success', `Vídeo gravado! Arquivo criado: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+        }
       };
 
       recorder.start();
@@ -334,24 +495,21 @@ export default function Home() {
       recorder.onstop = async () => {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
-        // Salvar gravação para download posterior
-        const recording: SavedRecording = {
-          id: `audio_${Date.now()}`,
+        // Salvar gravação no banco de dados
+        createRecordingMutation.mutate({
           type: 'audio',
-          blob,
-          fileName: `audio_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`,
+          device_id: devices[0]?.id || 'default',
           duration: recordingDuration,
-          timestamp: new Date()
-        };
-        
-        setSavedRecordings(prev => [...prev, recording]);
+          size: Math.round(blob.size / 1024 / 1024), // MB
+          blob: blob, // Passar o blob real
+        });
         
         // Parar stream
         stream.getTracks().forEach(track => track.stop());
         
-        toast.success('Áudio gravado!', {
-          description: 'Clique em "Baixar" para salvar o arquivo'
-        });
+        if ((window as any).showNotification) {
+          (window as any).showNotification('success', `Áudio gravado! Arquivo criado: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+        }
       };
 
       recorder.start();
@@ -491,103 +649,37 @@ export default function Home() {
     }
   };
 
-  const handlePanicButton = async () => {
-    if (isPanicActive) {
-      // Parar modo pânico
-      setIsPanicActive(false);
-      setActiveFeatures({ camera: false, audio: false, location: false });
-      stopAllRecordings();
-      
-      toast.info("Modo pânico desativado");
-    } else {
-      // Ativar modo pânico
-      setIsPanicActive(true);
-      setActiveFeatures({ camera: true, audio: true, location: true });
-      
-      try {
-        // Iniciar vídeo COM áudio + localização
-        await Promise.all([
-          startVideoWithAudioRecording(),
-          startLocationTracking()
-        ]);
-
-        // Criar registro no banco
-        const deviceId = devices.length > 0 ? devices[0].id : 'default-device';
-        createRecordingMutation.mutate({
-          device_id: deviceId,
-          type: 'panic',
-        });
-        
-        toast.success("Modo pânico ativado! Gravando evidências...", {
-          description: "Vídeo com áudio e localização ativados discretamente",
-        });
-      } catch (error) {
-        toast.error('Erro ao ativar modo pânico');
-        setIsPanicActive(false);
-        setActiveFeatures({ camera: false, audio: false, location: false });
-      }
-    }
-  };
-
-  const handleFeatureToggle = async (feature: 'camera' | 'audio' | 'location') => {
-    const newState = !activeFeatures[feature];
-    setActiveFeatures(prev => ({ ...prev, [feature]: newState }));
-
-    if (newState) {
-      try {
-        if (feature === 'camera') {
-          await startVideoOnlyRecording();
-        } else if (feature === 'audio') {
-          await startAudioRecording();
-        } else if (feature === 'location') {
-          await startLocationTracking();
-        }
-
-        // Criar registro no banco
-        const recordingType = feature === 'camera' ? 'video' : 
-                            feature === 'audio' ? 'audio' : 'location';
-        const deviceId = devices.length > 0 ? devices[0].id : 'default-device';
-        
-        createRecordingMutation.mutate({
-          device_id: deviceId,
-          type: recordingType,
-        });
-        
-        toast.success(`${feature === 'camera' ? 'Câmera' : 
-                      feature === 'audio' ? 'Áudio' : 'Localização'} ativado`, {
-          description: `Gravação de ${feature === 'camera' ? 'vídeo' : 
-                       feature === 'audio' ? 'áudio' : 'localização'} iniciada`
-        });
-      } catch (error) {
-        toast.error(`Erro ao ativar ${feature}`);
-        setActiveFeatures(prev => ({ ...prev, [feature]: false }));
-      }
-    } else {
-      // Parar gravação específica
-      stopSpecificRecording(feature);
-
-      toast.success(`${feature === 'camera' ? 'Câmera' : 
-                    feature === 'audio' ? 'Áudio' : 'Localização'} desativado`, {
-        description: `Gravação de ${feature === 'camera' ? 'vídeo' : 
-                     feature === 'audio' ? 'áudio' : 'localização'} parada`
-      });
-    }
-  };
-
-  // Função para baixar gravação
-  const downloadRecording = (recording: SavedRecording) => {
-    const url = URL.createObjectURL(recording.blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = recording.fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const stopPanicRecording = async () => {
+    setIsPanicActive(false);
+    setActiveFeatures({ camera: false, audio: false, location: false });
+    stopAllRecordings();
     
-    toast.success('Download iniciado!', {
-      description: `Arquivo ${recording.fileName} baixado`
-    });
+    // Limpar timeout e estado persistente
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+    // isRecordingPersistentRef.current = false;
+    
+    if ((window as any).showNotification) {
+      (window as any).showNotification('success', `Modo pânico finalizado! Gravação de ${recordingTimeLimit} minutos concluída.`);
+    }
+  };
+
+  const stopFeatureRecording = async (feature: 'camera' | 'audio' | 'location') => {
+    setActiveFeatures(prev => ({ ...prev, [feature]: false }));
+    stopSpecificRecording(feature);
+    
+    // Limpar timeout e estado persistente
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+    // isRecordingPersistentRef.current = false;
+    
+    if ((window as any).showNotification) {
+      (window as any).showNotification('success', `Gravação de ${feature} finalizada! Tempo de ${recordingTimeLimit} minutos concluído.`);
+    }
   };
 
   // Loading state
@@ -618,16 +710,6 @@ export default function Home() {
           <p className="text-muted-foreground">Sua segurança sempre protegida</p>
         </div>
 
-        {/* HTTPS Status */}
-        <Card className="max-w-2xl mx-auto mb-8 p-4 bg-success/10 border-success">
-          <div className="flex items-center gap-2 mb-2">
-            <Shield className="h-5 w-5 text-success" />
-            <h3 className="font-semibold text-success">HTTPS Ativo</h3>
-          </div>
-          <p className="text-sm text-success">
-            ✅ Todas as funcionalidades disponíveis: Câmera, Áudio e Localização!
-          </p>
-        </Card>
 
         {/* Status Cards - Now clickable */}
         <div className="grid grid-cols-3 gap-4 mb-8 max-w-2xl mx-auto">
@@ -639,9 +721,12 @@ export default function Home() {
               <Camera className={`h-6 w-6 ${activeFeatures.camera ? 'text-success' : 'text-muted-foreground'}`} />
               <span className="text-xs font-medium">Câmera</span>
               {activeFeatures.camera && (
-                <div className="flex items-center gap-1">
-                  <Activity className="h-3 w-3 text-success animate-pulse" />
-                  <span className="text-xs text-success">Ativa</span>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <Activity className="h-3 w-3 text-success animate-pulse" />
+                    <span className="text-xs text-success">Ativa</span>
+                  </div>
+                  <span className="text-xs text-success/70">Não pode cancelar</span>
                 </div>
               )}
             </div>
@@ -655,9 +740,12 @@ export default function Home() {
               <Mic className={`h-6 w-6 ${activeFeatures.audio ? 'text-success' : 'text-muted-foreground'}`} />
               <span className="text-xs font-medium">Áudio</span>
               {activeFeatures.audio && (
-                <div className="flex items-center gap-1">
-                  <Activity className="h-3 w-3 text-success animate-pulse" />
-                  <span className="text-xs text-success">Ativo</span>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <Activity className="h-3 w-3 text-success animate-pulse" />
+                    <span className="text-xs text-success">Ativo</span>
+                  </div>
+                  <span className="text-xs text-success/70">Não pode cancelar</span>
                 </div>
               )}
             </div>
@@ -671,9 +759,12 @@ export default function Home() {
               <MapPin className={`h-6 w-6 ${activeFeatures.location ? 'text-success' : 'text-muted-foreground'}`} />
               <span className="text-xs font-medium">Localização</span>
               {activeFeatures.location && (
-                <div className="flex items-center gap-1">
-                  <Activity className="h-3 w-3 text-success animate-pulse" />
-                  <span className="text-xs text-success">Ativa</span>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <Activity className="h-3 w-3 text-success animate-pulse" />
+                    <span className="text-xs text-success">Ativa</span>
+                  </div>
+                  <span className="text-xs text-success/70">Não pode cancelar</span>
                 </div>
               )}
             </div>
@@ -697,7 +788,10 @@ export default function Home() {
             >
               <div className="flex flex-col items-center gap-2">
                 <AlertCircle className="h-16 w-16" />
-                <span>{isPanicActive ? "PARAR" : "PÂNICO"}</span>
+                <span>{isPanicActive ? "GRAVANDO" : "PÂNICO"}</span>
+                {isPanicActive && (
+                  <span className="text-xs opacity-75">Não pode cancelar</span>
+                )}
               </div>
             </Button>
           </div>
@@ -769,42 +863,71 @@ export default function Home() {
           </Card>
         )}
 
-        {/* Saved Recordings */}
-        {savedRecordings.length > 0 && (
-          <Card className="max-w-2xl mx-auto mb-8 p-6 bg-gradient-card">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Download className="h-5 w-5 text-primary" />
-              Gravações Salvas
-            </h3>
-            <div className="space-y-3">
-              {savedRecordings.map((recording) => (
-                <div key={recording.id} className="flex items-center justify-between p-3 bg-card rounded-lg">
-                  <div className="flex items-center gap-3">
-                    {recording.type === 'video' && <Camera className="h-4 w-4 text-primary" />}
-                    {recording.type === 'audio' && <Mic className="h-4 w-4 text-primary" />}
-                    {recording.type === 'location' && <MapPin className="h-4 w-4 text-primary" />}
-                    <div>
-                      <p className="text-sm font-medium">{recording.fileName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {recording.duration}s • {recording.timestamp.toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => downloadRecording(recording)}
-                    className="flex items-center gap-1"
-                  >
-                    <Download className="h-3 w-3" />
-                    Baixar
-                  </Button>
-                </div>
-              ))}
+        {/* Controle de Tempo de Gravação */}
+        <Card className="max-w-2xl mx-auto mb-8 p-6 bg-gradient-card">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            Tempo de Gravação
+          </h3>
+          <div className="space-y-4">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                Defina o tempo limite para todas as gravações (pânico, câmera, áudio, localização)
+              </p>
+              <div className="text-2xl font-bold text-primary mb-2">
+                {recordingTimeLimit} {recordingTimeLimit === 1 ? 'minuto' : 'minutos'}
+              </div>
             </div>
-          </Card>
-        )}
-
-        {/* Instructions */}
+            
+            <div className="px-4">
+              <input
+                type="range"
+                min="1"
+                max="60"
+                value={recordingTimeLimit}
+                onChange={(e) => setRecordingTimeLimit(parseInt(e.target.value))}
+                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer slider"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(recordingTimeLimit - 1) * 100 / 59}%, #e5e7eb ${(recordingTimeLimit - 1) * 100 / 59}%, #e5e7eb 100%)`
+                }}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                <span>1 min</span>
+                <span>30 min</span>
+                <span>60 min</span>
+              </div>
+            </div>
+            
+            <style jsx>{`
+              .slider::-webkit-slider-thumb {
+                appearance: none;
+                height: 20px;
+                width: 20px;
+                border-radius: 50%;
+                background: #3b82f6;
+                cursor: pointer;
+                border: 2px solid #ffffff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+              }
+              
+              .slider::-moz-range-thumb {
+                height: 20px;
+                width: 20px;
+                border-radius: 50%;
+                background: #3b82f6;
+                cursor: pointer;
+                border: 2px solid #ffffff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+              }
+            `}</style>
+            
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">
+                ⚠️ As gravações não podem ser canceladas até completar o tempo definido
+              </p>
+            </div>
+          </div>
+        </Card>
         <Card className="max-w-2xl mx-auto p-6 bg-gradient-card">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-primary" />
@@ -830,25 +953,6 @@ export default function Home() {
           </ul>
         </Card>
 
-        {/* Device Status */}
-        {devices.length > 0 && (
-          <Card className="max-w-2xl mx-auto mt-8 p-6 bg-gradient-card">
-            <h3 className="text-lg font-semibold mb-4">Status dos Dispositivos</h3>
-            <div className="space-y-2">
-              {devices.map((device) => (
-                <div key={device.id} className="flex items-center justify-between">
-                  <span className="text-sm">{device.name}</span>
-                  <Badge 
-                    variant={device.status === "online" ? "outline" : "secondary"}
-                    className={device.status === "online" ? "bg-success/10 text-success border-success" : ""}
-                  >
-                    {device.status === "online" ? "Online" : "Offline"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
 
         {/* Debug Info */}
         {devicesError && (

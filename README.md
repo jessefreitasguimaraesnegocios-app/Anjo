@@ -1,21 +1,17 @@
 # 🛡️ Anjo da Guarda - App de Segurança
 
-Um aplicativo de segurança completo com gravação de vídeo, áudio e localização em tempo real.
+Um aplicativo de segurança completo com gravação de vídeo, áudio e localização em tempo real, desenvolvido como PWA (Progressive Web App).
 
-## 🚀 Funcionalidades
+## 🚀 Funcionalidades Principais
 
-### ✅ **Recursos Principais:**
 - **📹 Gravação de Vídeo** - Câmera em tempo real com preview
-- **🎤 Gravação de Áudio** - Microfone com cancelamento de eco
+- **🎤 Gravação de Áudio** - Microfone com cancelamento de eco  
 - **📍 Localização GPS** - Coordenadas + endereço + mapa interativo
 - **🚨 Modo Pânico** - Ativação simultânea de todos os recursos
 - **📱 PWA Completo** - Instalação nativa no celular
-- **💾 Download Manual** - Controle total sobre arquivos
-
-### 🔐 **Segurança:**
-- **HTTPS Completo** - Certificados SSL válidos
-- **Permissões Seguras** - Controle total de acesso
-- **Gravação Discreta** - Ativação silenciosa em emergências
+- **🔐 Pasta Protegida** - "Meus Registros" com senha por dispositivo
+- **⏱️ Controle de Tempo** - Gravações de 1-60 minutos não canceláveis
+- **🔔 Notificações Visuais** - Sino animado com histórico
 
 ## 🛠️ Tecnologias
 
@@ -26,117 +22,86 @@ Um aplicativo de segurança completo com gravação de vídeo, áudio e localiza
 - **PWA**: Service Workers + Manifest
 - **HTTPS**: Certificados SSL com mkcert
 
-## 📦 Instalação
+## 📦 Instalação Rápida
 
-### **Pré-requisitos:**
-- Node.js 18+
-- npm ou yarn
-- Conta no Supabase
-
-### **Passo a Passo:**
-
-1. **Clone o repositório:**
 ```bash
+# Clone e instale
 git clone https://github.com/seu-usuario/anjo-da-guarda.git
 cd anjo-da-guarda
-```
-
-2. **Instale as dependências:**
-```bash
 npm install
-```
 
-3. **Configure o Supabase:**
-   - Crie um projeto no [Supabase](https://supabase.com)
-   - Execute o script SQL em `database_schema.sql`
-   - Configure as variáveis de ambiente
+# Configure Supabase (veja guia completo)
+# Execute database_schema.sql no Supabase SQL Editor
 
-4. **Configure HTTPS (Opcional):**
-```bash
-# Instalar mkcert
-npm install -g mkcert
-
-# Criar certificados
-mkcert create-ca
-mkcert create-cert --domains localhost,192.168.18.94,127.0.0.1
-
-# Instalar certificado root
-certutil -addstore -user Root ca.crt
-```
-
-5. **Execute o projeto:**
-```bash
+# Execute
 npm run dev
 ```
 
 ## 🔧 Configuração
 
 ### **Variáveis de Ambiente:**
-Crie um arquivo `.env.local`:
 ```env
 VITE_SUPABASE_URL=sua_url_do_supabase
 VITE_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
 ```
 
 ### **Supabase Setup:**
-1. Execute o script `database_schema.sql` no SQL Editor
-2. Configure as políticas RLS
-3. Ative o Storage para arquivos
+1. Execute `database_schema.sql` no SQL Editor
+2. Configure URLs de autenticação
+3. Ative Storage para arquivos
 
 ## 📱 Como Usar
 
 ### **Botão Pânico:**
 - **Clique**: Ativa vídeo COM áudio + localização
-- **Preview**: Câmera em tempo real
-- **Mapa**: Localização com endereço da rua
-- **Download**: Arquivo único com tudo
+- **Tempo**: Configurável de 1-60 minutos
+- **Não cancelável**: Até completar o tempo definido
 
-### **Botões Individuais:**
+### **Recursos Individuais:**
 - **Câmera**: Vídeo sem áudio
-- **Áudio**: Apenas microfone
+- **Áudio**: Apenas microfone  
 - **Localização**: GPS + mapa + endereço
 
-### **Download:**
-- **Manual**: Clique em "Baixar" quando quiser
-- **Formato**: WebM (compatível com todos os players)
-- **Tamanho**: Mostrado na notificação
+### **Meus Registros:**
+- **Acesso**: Senha do dispositivo
+- **Reprodução**: Vídeo/áudio em tempo real
+- **Download**: Arquivos para o dispositivo
+- **Proteção**: Confirmação dupla para deletar
 
 ## 🌐 Deploy
 
-### **Vercel (Recomendado):**
 ```bash
-npm install -g vercel
+# Build
+npm run build
+
+# Deploy Vercel
 vercel --prod
+
+# Ou upload dist/ para Netlify/GitHub Pages
 ```
 
-### **Netlify:**
-```bash
-npm run build
-# Upload da pasta dist/
-```
-
-### **GitHub Pages:**
-```bash
-npm run build
-# Configure GitHub Actions
-```
-
-## 🔒 Segurança
-
-- **HTTPS Obrigatório** para funcionalidades de mídia
-- **Permissões Explícitas** do usuário
-- **Certificados Válidos** para desenvolvimento
-- **Dados Locais** - arquivos ficam no dispositivo
-
-## 📋 Scripts Disponíveis
+## 📋 Scripts
 
 ```bash
 npm run dev          # Desenvolvimento
 npm run build        # Build para produção
 npm run preview      # Preview do build
 npm run lint         # Linting do código
-npm run type-check   # Verificação de tipos
+npm run generate-icons # Gerar ícones PWA
 ```
+
+## 📚 Documentação Completa
+
+**Para configuração detalhada, troubleshooting e desenvolvimento avançado, consulte:**
+
+👉 **[GUIA_COMPLETO_ANJO_DA_GUARDA.md](./GUIA_COMPLETO_ANJO_DA_GUARDA.md)**
+
+O guia completo contém:
+- ✅ Configuração passo a passo do Supabase
+- ✅ Todas as correções e melhorias implementadas
+- ✅ Troubleshooting completo
+- ✅ Estrutura detalhada do projeto
+- ✅ Comandos úteis e próximos passos
 
 ## 🤝 Contribuição
 
@@ -153,16 +118,8 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 ## 🆘 Suporte
 
 - **Issues**: [GitHub Issues](https://github.com/seu-usuario/anjo-da-guarda/issues)
-- **Documentação**: [Wiki do projeto](https://github.com/seu-usuario/anjo-da-guarda/wiki)
+- **Documentação**: [Guia Completo](./GUIA_COMPLETO_ANJO_DA_GUARDA.md)
 - **Email**: seu-email@exemplo.com
-
-## 🎯 Roadmap
-
-- [ ] **Notificações Push** - Alertas em tempo real
-- [ ] **Backup na Nuvem** - Sincronização automática
-- [ ] **Modo Stealth** - Interface oculta
-- [ ] **Integração com Polícia** - Envio automático
-- [ ] **IA para Análise** - Detecção de situações de risco
 
 ---
 

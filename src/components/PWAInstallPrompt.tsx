@@ -2,13 +2,26 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Download, Share, X, Smartphone, Monitor } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  Download, 
+  Share, 
+  X, 
+  Smartphone, 
+  Monitor, 
+  CheckCircle, 
+  AlertCircle,
+  RefreshCw,
+  Wifi,
+  WifiOff
+} from 'lucide-react';
 import { usePWA } from '@/hooks/usePWA';
 import { toast } from 'sonner';
 
 export const PWAInstallPrompt = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { isInstalled, canInstall, installPWA, sharePWA } = usePWA();
 
   useEffect(() => {
@@ -21,6 +34,20 @@ export const PWAInstallPrompt = () => {
       return () => clearTimeout(timer);
     }
   }, [canInstall, isInstalled, dismissed]);
+
+  useEffect(() => {
+    // Monitorar status de conexão
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleInstall = async () => {
     try {
@@ -37,7 +64,6 @@ export const PWAInstallPrompt = () => {
   const handleDismiss = () => {
     setIsVisible(false);
     setDismissed(true);
-    // Salvar no localStorage para não mostrar novamente
     localStorage.setItem('pwa-prompt-dismissed', 'true');
   };
 
@@ -85,6 +111,22 @@ export const PWAInstallPrompt = () => {
           </Button>
         </div>
 
+        {/* Status de conexão */}
+        <div className="mb-3">
+          <Alert className={isOnline ? "bg-success/10 border-success" : "bg-warning/10 border-warning"}>
+            <div className="flex items-center gap-2">
+              {isOnline ? (
+                <Wifi className="h-4 w-4 text-success" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-warning" />
+              )}
+              <AlertDescription className="text-xs">
+                {isOnline ? 'Conectado' : 'Modo offline disponível'}
+              </AlertDescription>
+            </div>
+          </Alert>
+        </div>
+
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Badge variant="outline" className="text-xs">
@@ -112,10 +154,19 @@ export const PWAInstallPrompt = () => {
             </Button>
           </div>
 
-          <div className="text-xs text-muted-foreground">
-            <p>• Acesso offline</p>
-            <p>• Notificações push</p>
-            <p>• Instalação rápida</p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3 text-success" />
+              <span>Acesso offline</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3 text-success" />
+              <span>Notificações push</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3 text-success" />
+              <span>Instalação rápida</span>
+            </div>
           </div>
         </div>
       </Card>
@@ -125,17 +176,82 @@ export const PWAInstallPrompt = () => {
 
 export const PWAStatus = () => {
   const { isInstalled } = usePWA();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   if (!isInstalled) {
     return null;
   }
 
   return (
-    <div className="fixed top-4 left-4 z-40">
+    <div className="fixed top-4 left-4 z-40 flex gap-2">
       <Badge variant="outline" className="bg-success/10 text-success border-success">
         <Monitor className="h-3 w-3 mr-1" />
         App Instalado
       </Badge>
+      
+      {!isOnline && (
+        <Badge variant="outline" className="bg-warning/10 text-warning border-warning">
+          <WifiOff className="h-3 w-3 mr-1" />
+          Offline
+        </Badge>
+      )}
+    </div>
+  );
+};
+
+export const PWAUpdatePrompt = () => {
+  const [showUpdate, setShowUpdate] = useState(false);
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        setShowUpdate(true);
+      });
+    }
+  }, []);
+
+  const handleUpdate = () => {
+    window.location.reload();
+  };
+
+  if (!showUpdate) return null;
+
+  return (
+    <div className="fixed top-4 right-4 z-50 max-w-sm">
+      <Card className="p-4 bg-gradient-card border-primary shadow-glow">
+        <div className="flex items-center gap-2 mb-2">
+          <RefreshCw className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold text-sm">Atualização Disponível</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Uma nova versão do app está disponível
+        </p>
+        <div className="flex gap-2">
+          <Button onClick={handleUpdate} size="sm" className="flex-1">
+            Atualizar
+          </Button>
+          <Button 
+            onClick={() => setShowUpdate(false)} 
+            variant="outline" 
+            size="sm"
+          >
+            Depois
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 };

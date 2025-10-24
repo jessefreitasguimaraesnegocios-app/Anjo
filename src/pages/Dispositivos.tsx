@@ -17,7 +17,6 @@ import {
   Trash2,
   Edit
 } from "lucide-react";
-import { toast } from "sonner";
 import { useDevices, Device, CreateDeviceData } from "@/hooks/useDevices";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -29,6 +28,8 @@ export default function Dispositivos() {
     type: 'phone',
     is_third_party: false,
     third_party_email: '',
+    records_password: '',
+    recording_time_limit: 1,
   });
 
   const { getDevices, createDevice, updateDevice, deleteDevice, updateDeviceStatus } = useDevices();
@@ -45,12 +46,16 @@ export default function Dispositivos() {
     mutationFn: createDevice,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] });
-      toast.success('Dispositivo adicionado com sucesso!');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', 'Dispositivo adicionado com sucesso!');
+      }
       setIsAddDialogOpen(false);
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Erro ao adicionar dispositivo');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', error.message || 'Erro ao adicionar dispositivo');
+      }
     },
   });
 
@@ -60,12 +65,16 @@ export default function Dispositivos() {
       updateDevice(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] });
-      toast.success('Dispositivo atualizado com sucesso!');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', 'Dispositivo atualizado com sucesso!');
+      }
       setEditingDevice(null);
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Erro ao atualizar dispositivo');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', error.message || 'Erro ao atualizar dispositivo');
+      }
     },
   });
 
@@ -74,10 +83,14 @@ export default function Dispositivos() {
     mutationFn: deleteDevice,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] });
-      toast.success('Dispositivo removido com sucesso!');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', 'Dispositivo removido com sucesso!');
+      }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Erro ao remover dispositivo');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', error.message || 'Erro ao remover dispositivo');
+      }
     },
   });
 
@@ -87,19 +100,45 @@ export default function Dispositivos() {
       type: 'phone',
       is_third_party: false,
       third_party_email: '',
+      records_password: '',
+      recording_time_limit: 1,
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validar campos obrigatórios
+    if (!deviceForm.name.trim()) {
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', 'Nome do dispositivo é obrigatório');
+      }
+      return;
+    }
+    
+    if (!deviceForm.records_password?.trim()) {
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', 'Senha de registros é obrigatória');
+      }
+      return;
+    }
+    
+    // Preparar dados para envio
+    const deviceData = {
+      name: deviceForm.name.trim(),
+      type: deviceForm.type,
+      is_third_party: deviceForm.is_third_party || false,
+      third_party_email: deviceForm.third_party_email?.trim() || null,
+      records_password: deviceForm.records_password.trim(),
+    };
+    
     if (editingDevice) {
       updateDeviceMutation.mutate({
         id: editingDevice.id,
-        updates: deviceForm,
+        updates: deviceData,
       });
     } else {
-      createDeviceMutation.mutate(deviceForm);
+      createDeviceMutation.mutate(deviceData);
     }
   };
 
@@ -110,6 +149,8 @@ export default function Dispositivos() {
       type: device.type,
       is_third_party: device.is_third_party,
       third_party_email: device.third_party_email || '',
+      records_password: device.records_password || '',
+      recording_time_limit: device.recording_time_limit || 5,
     });
     setIsAddDialogOpen(true);
   };
@@ -118,11 +159,13 @@ export default function Dispositivos() {
     try {
       // Simular ação remota - em produção seria uma chamada real
       await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success(`${action} ativado para o dispositivo`, {
-        description: "O comando foi enviado com sucesso",
-      });
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', `${action} ativado para o dispositivo`);
+      }
     } catch (error) {
-      toast.error('Erro ao enviar comando');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', 'Erro ao enviar comando');
+      }
     }
   };
 
@@ -256,6 +299,91 @@ export default function Dispositivos() {
                     />
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="records_password">Senha de Registros</Label>
+                  <Input
+                    id="records_password"
+                    type="password"
+                    value={deviceForm.records_password}
+                    onChange={(e) => setDeviceForm(prev => ({ 
+                      ...prev, 
+                      records_password: e.target.value 
+                    }))}
+                    placeholder="Senha para acessar downloads deste dispositivo"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Esta senha será usada para acessar os registros específicos deste dispositivo
+                  </p>
+                </div>
+
+                {/* Controle de Tempo de Gravação */}
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Tempo de Gravação</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Defina o tempo limite para gravações deste dispositivo (1 a 60 minutos)
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary mb-2">
+                      {deviceForm.recording_time_limit} {deviceForm.recording_time_limit === 1 ? 'minuto' : 'minutos'}
+                    </div>
+                  </div>
+                  
+                  <div className="px-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="60"
+                      value={deviceForm.recording_time_limit || 1}
+                      onChange={(e) => setDeviceForm(prev => ({ 
+                        ...prev, 
+                        recording_time_limit: parseInt(e.target.value) 
+                      }))}
+                      className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer slider"
+                      style={{
+                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((deviceForm.recording_time_limit || 1) - 1) * 100 / 59}%, #e5e7eb ${((deviceForm.recording_time_limit || 1) - 1) * 100 / 59}%, #e5e7eb 100%)`
+                      }}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                      <span>1 min</span>
+                      <span>30 min</span>
+                      <span>60 min</span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground">
+                      ⚠️ As gravações não podem ser canceladas até completar o tempo definido
+                    </p>
+                  </div>
+                  
+                  <style jsx>{`
+                    .slider::-webkit-slider-thumb {
+                      appearance: none;
+                      height: 20px;
+                      width: 20px;
+                      border-radius: 50%;
+                      background: #3b82f6;
+                      cursor: pointer;
+                      border: 2px solid #ffffff;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    }
+                    
+                    .slider::-moz-range-thumb {
+                      height: 20px;
+                      width: 20px;
+                      border-radius: 50%;
+                      background: #3b82f6;
+                      cursor: pointer;
+                      border: 2px solid #ffffff;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    }
+                  `}</style>
+                </div>
 
                 <div className="flex gap-2 pt-4">
                   <Button type="submit" disabled={createDeviceMutation.isPending || updateDeviceMutation.isPending}>

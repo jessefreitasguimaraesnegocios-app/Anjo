@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Bell, X, AlertTriangle, Activity, MapPin, Video } from 'lucide-react';
 import { useRealtime, RealtimeUpdate } from '@/hooks/useRealtime';
-import { toast } from 'sonner';
 
 export const RealtimeNotifications = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,26 +12,21 @@ export const RealtimeNotifications = () => {
   const { isConnected, updates } = useRealtime();
 
   useEffect(() => {
-    // Show toast for important updates
+    // Usar sistema de notificações visuais ao invés de toasts
     updates.forEach((update, index) => {
       if (index === 0) { // Only show the latest update
-        switch (update.type) {
-          case 'panic_alert':
-            toast.error('🚨 Alerta de Pânico!', {
-              description: 'Um dispositivo ativou o modo de emergência',
-              duration: 10000,
-            });
-            break;
-          case 'recording_start':
-            toast.info('📹 Gravação Iniciada', {
-              description: 'Nova gravação foi iniciada',
-            });
-            break;
-          case 'device_status':
-            toast.success('📱 Dispositivo Atualizado', {
-              description: 'Status do dispositivo foi alterado',
-            });
-            break;
+        if ((window as any).showNotification) {
+          switch (update.type) {
+            case 'panic_alert':
+              (window as any).showNotification('error', '🚨 Alerta de Pânico! Um dispositivo ativou o modo de emergência');
+              break;
+            case 'recording_start':
+              (window as any).showNotification('info', '📹 Gravação Iniciada - Nova gravação foi iniciada');
+              break;
+            case 'device_status':
+              (window as any).showNotification('success', '📱 Dispositivo Atualizado - Status do dispositivo foi alterado');
+              break;
+          }
         }
       }
     });
@@ -106,23 +100,6 @@ export const RealtimeNotifications = () => {
         </Badge>
       </div>
 
-      {/* Notification Bell */}
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative"
-      >
-        <Bell className="h-4 w-4" />
-        {unreadCount > 0 && (
-          <Badge 
-            variant="destructive" 
-            className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
-          >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </Badge>
-        )}
-      </Button>
 
       {/* Notifications Panel */}
       {isOpen && (

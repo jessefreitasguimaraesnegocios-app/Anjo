@@ -7,6 +7,8 @@ export interface Device {
   type: 'phone' | 'pc' | 'tablet';
   is_third_party: boolean;
   third_party_email?: string;
+  records_password?: string;
+  recording_time_limit?: number;
   status: 'online' | 'offline';
   last_seen?: string;
   created_at: string;
@@ -17,6 +19,8 @@ export interface CreateDeviceData {
   type: 'phone' | 'pc' | 'tablet';
   is_third_party?: boolean;
   third_party_email?: string;
+  records_password?: string;
+  recording_time_limit?: number;
 }
 
 export const useDevices = () => {

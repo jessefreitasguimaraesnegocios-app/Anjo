@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-icons": "node generate-pwa-icons.js",
+    "pwa:audit": "lighthouse https://192.168.18.94:8080 --view --only-categories=pwa"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

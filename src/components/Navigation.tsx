@@ -1,13 +1,13 @@
 import { useLocation, Link } from "react-router-dom";
-import { Shield, FileText, Smartphone, CreditCard, LogOut } from "lucide-react";
+import { Shield, FileText, Smartphone, CreditCard, LogOut, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const navItems = [
   { path: "/", icon: Shield, label: "Anjo da Guarda" },
-  { path: "/evidencias", icon: FileText, label: "Evidências" },
+  { path: "/evidencias", icon: FileText, label: "Arquivos" },
   { path: "/dispositivos", icon: Smartphone, label: "Dispositivos" },
   { path: "/planos", icon: CreditCard, label: "Planos" },
 ];
@@ -19,9 +19,13 @@ export const Navigation = () => {
   const handleLogout = async () => {
     try {
       await signOut();
-      toast.success('Logout realizado com sucesso');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', 'Logout realizado com sucesso');
+      }
     } catch (error) {
-      toast.error('Erro ao fazer logout');
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', 'Erro ao fazer logout');
+      }
     }
   };
 
@@ -49,6 +53,19 @@ export const Navigation = () => {
               </Link>
             );
           })}
+          
+          {/* Sino de Notificações */}
+          <div className="flex items-center">
+            <NotificationBell />
+          </div>
+          
+          {/* Status de conexão */}
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+              <Wifi className="h-4 w-4 text-green-500" />
+              <span>Conectado</span>
+            </div>
+          </div>
           
           {/* Logout button - only visible on desktop */}
           <Button

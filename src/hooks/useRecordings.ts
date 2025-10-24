@@ -20,6 +20,7 @@ export interface CreateRecordingData {
   location_data?: any;
   duration?: number;
   size?: number;
+  blob?: Blob; // Adicionar blob para upload do arquivo real
 }
 
 export const useRecordings = () => {
@@ -44,21 +45,52 @@ export const useRecordings = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Gerar nome do arquivo simulado
-    const fileExt = recordingData.type === 'video' ? 'mp4' : 
-                   recordingData.type === 'audio' ? 'mp3' : 
-                   recordingData.type === 'location' ? 'json' : 'mp4';
-    const fileName = `${recordingData.type}_${Date.now()}.${fileExt}`;
+    // Gerar nome do arquivo melhorado com timestamp e tipo
+    const now = new Date();
+    const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+    const dateStr = now.toLocaleDateString('pt-BR').replace(/\//g, '-');
+    const timeStr = now.toLocaleTimeString('pt-BR', { hour12: false }).replace(/:/g, '-');
+    
+    const fileExt = recordingData.type === 'video' ? 'webm' : 
+                   recordingData.type === 'audio' ? 'webm' : 
+                   recordingData.type === 'location' ? 'json' : 'webm';
+    
+    const typeLabel = recordingData.type === 'video' ? 'Video' : 
+                     recordingData.type === 'audio' ? 'Audio' : 
+                     recordingData.type === 'location' ? 'Localizacao' : 'Panico';
+    
+    const fileName = `${typeLabel}_${dateStr}_${timeStr}.${fileExt}`;
     const filePath = `${user.id}/${fileName}`;
+
+    // Se há um blob, fazer upload para o Supabase Storage
+    if (recordingData.blob) {
+      console.log('📤 Fazendo upload do arquivo:', filePath, 'Tamanho:', recordingData.blob.size, 'bytes');
+      
+      const { error: uploadError } = await supabase.storage
+        .from('recordings')
+        .upload(filePath, recordingData.blob, {
+          contentType: recordingData.blob.type,
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Erro ao fazer upload do arquivo:', uploadError);
+        throw new Error('Erro ao salvar arquivo de gravação');
+      }
+      
+      console.log('✅ Upload concluído com sucesso:', filePath);
+    } else {
+      console.log('⚠️ Nenhum blob fornecido para upload');
+    }
 
     const { data, error } = await supabase
       .from('recordings')
       .insert({
         ...recordingData,
         user_id: user.id,
-        file_path: filePath, // Já criar com file_path para simular arquivo pronto
-        duration: recordingData.duration || Math.floor(Math.random() * 300) + 60,
-        size: recordingData.size || Math.floor(Math.random() * 50) + 10,
+        file_path: filePath,
+        duration: recordingData.duration || 0,
+        size: recordingData.size || 0,
         is_downloaded: false,
       })
       .select()

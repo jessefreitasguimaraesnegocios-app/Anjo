@@ -1,15 +1,15 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { AuthForm } from "@/components/AuthForm";
 import { RealtimeNotifications } from "@/components/RealtimeNotifications";
-import { PWAInstallPrompt, PWAStatus } from "@/components/PWAInstallPrompt";
+// import { RecordingIndicator } from "@/components/RecordingIndicator";
+import { PWAInstallPrompt, PWAStatus, PWAUpdatePrompt } from "@/components/PWAInstallPrompt";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "./pages/Home";
 import Evidencias from "./pages/Evidencias";
+import MeusRegistros from "./pages/MeusRegistros";
 import Dispositivos from "./pages/Dispositivos";
 import Planos from "./pages/Planos";
 import NotFound from "./pages/NotFound";
@@ -37,12 +37,15 @@ const AppContent = () => {
   return (
     <BrowserRouter>
       <PWAStatus />
+      <PWAUpdatePrompt />
+      {/* <RecordingIndicator /> */}
       <RealtimeNotifications />
       <PWAInstallPrompt />
       <Navigation />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/evidencias" element={<Evidencias />} />
+        <Route path="/meus-registros" element={<MeusRegistros />} />
         <Route path="/dispositivos" element={<Dispositivos />} />
         <Route path="/planos" element={<Planos />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
@@ -55,8 +58,6 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
       <AppContent />
     </TooltipProvider>
   </QueryClientProvider>
