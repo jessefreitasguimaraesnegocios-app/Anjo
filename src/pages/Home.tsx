@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, AlertCircle, Camera, Mic, MapPin, Activity, Square, Play } from 'lucide-react';
+import { Shield, AlertCircle, Camera, Mic, MapPin, Activity, Square, Play, Wifi } from 'lucide-react';
 import { useDevices } from '@/hooks/useDevices';
 import { useRecordings } from '@/hooks/useRecordings';
 import { ConnectionMonitor } from '@/components/ConnectionMonitor';
@@ -20,6 +21,7 @@ interface RecordingState {
 }
 
 export default function Home() {
+  const navigate = useNavigate();
   const [isPanicActive, setIsPanicActive] = useState(false);
   const [activeFeatures, setActiveFeatures] = useState({
     camera: false,
@@ -796,6 +798,19 @@ export default function Home() {
               </div>
             </Button>
           </div>
+        </div>
+
+        {/* Modo Live Button */}
+        <div className="flex justify-center mb-8">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => navigate('/modo-live')}
+            className="h-16 px-8 text-lg gap-3 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <Wifi className="h-6 w-6" />
+            Modo Live
+          </Button>
         </div>
 
         {/* Recording Status */}

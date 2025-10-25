@@ -12,6 +12,7 @@ import Evidencias from "./pages/Evidencias";
 import MeusRegistros from "./pages/MeusRegistros";
 import Dispositivos from "./pages/Dispositivos";
 import ControleRemoto from "./pages/ControleRemoto";
+import ModoLive from "./pages/ModoLive";
 import Planos from "./pages/Planos";
 import NotFound from "./pages/NotFound";
 
@@ -49,6 +50,7 @@ const AppContent = () => {
         <Route path="/meus-registros" element={<MeusRegistros />} />
         <Route path="/dispositivos" element={<Dispositivos />} />
         <Route path="/controle-remoto" element={<ControleRemoto />} />
+        <Route path="/modo-live" element={<ModoLive />} />
         <Route path="/planos" element={<Planos />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

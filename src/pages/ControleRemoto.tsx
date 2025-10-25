@@ -163,7 +163,7 @@ export default function ControleRemoto() {
             size="lg"
             variant="outline"
             className="h-20 gap-3 md:col-span-2"
-            onClick={() => handleAction('Modo Live')}
+            onClick={() => navigate('/modo-live')}
           >
             <Wifi className="h-6 w-6" />
             <div className="text-left">
