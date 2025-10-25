@@ -833,6 +833,23 @@ export default function Home() {
               playsInline
               className="w-full h-64 object-cover rounded-lg"
             />
+            
+            {/* Localização embaixo do preview da câmera */}
+            {locationData && (
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Localização Atual</span>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">{locationAddress || 'Obtendo endereço...'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Lat: {locationData.coords.latitude.toFixed(6)}, 
+                    Lng: {locationData.coords.longitude.toFixed(6)}
+                  </p>
+                </div>
+              </div>
+            )}
           </Card>
         )}
 
