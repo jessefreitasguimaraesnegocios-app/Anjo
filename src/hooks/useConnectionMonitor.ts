@@ -30,80 +30,77 @@ export const useConnectionMonitor = () => {
       // Verificar conectividade básica
       const hasInternet = navigator.onLine;
       
-      // Tentar fazer requisições para diferentes serviços para detectar conectividade real
-      const testUrls = [
-        'https://www.google.com/favicon.ico',
-        'https://www.cloudflare.com/favicon.ico',
-        'https://httpbin.org/status/200'
-      ];
-      
+      // Testar conectividade real com timeout muito curto
       let realInternet = false;
-      let connectionType = 'unknown';
-      
-      // Testar conectividade real com timeout curto
-      for (const url of testUrls) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2000);
-          
-          const response = await fetch(url, {
-            method: 'HEAD',
-            cache: 'no-cache',
-            signal: controller.signal,
-            mode: 'no-cors'
-          });
-          
-          clearTimeout(timeoutId);
-          realInternet = true;
-          break;
-        } catch (error) {
-          console.log(`Teste de conectividade falhou para ${url}:`, error);
-        }
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1000); // Timeout muito curto
+        
+        await fetch('https://www.google.com/favicon.ico', {
+          method: 'HEAD',
+          cache: 'no-cache',
+          signal: controller.signal,
+          mode: 'no-cors'
+        });
+        
+        clearTimeout(timeoutId);
+        realInternet = true;
+      } catch (error) {
+        realInternet = false;
       }
       
-      // Detectar modo avião baseado em múltiplos fatores
-      const airplaneMode = !hasInternet || (!realInternet && navigator.onLine);
+      // Detectar modo avião: quando navigator.onLine é false OU quando não consegue conectar
+      const airplaneMode = !hasInternet;
       
-      // Detectar tipo de conexão usando Network Information API se disponível
+      // Detectar WiFi e dados móveis baseado na conectividade real
       let wifi = false;
       let mobileData = false;
       
+      // Tentar usar Network Information API se disponível
       if ('connection' in navigator) {
         const connection = (navigator as any).connection;
         if (connection) {
-          const effectiveType = connection.effectiveType;
           const type = connection.type;
+          const effectiveType = connection.effectiveType;
+          
+          console.log('Network API info:', { type, effectiveType, downlink: connection.downlink });
           
           // Detectar WiFi
-          wifi = type === 'wifi' || effectiveType === '4g' || effectiveType === '3g';
+          if (type === 'wifi') {
+            wifi = realInternet;
+          }
           
           // Detectar dados móveis
-          mobileData = type === 'cellular' || type === 'bluetooth' || type === 'ethernet';
+          if (type === 'cellular') {
+            mobileData = realInternet;
+          }
           
-          console.log('Network Info:', { type, effectiveType, wifi, mobileData });
+          // Se não conseguiu detectar tipo específico, usar conectividade geral
+          if (type === 'unknown' || type === 'none') {
+            wifi = false;
+            mobileData = false;
+          }
         }
-      }
-      
-      // Fallback: se não conseguir detectar tipo específico, usar conectividade geral
-      if (!wifi && !mobileData) {
+      } else {
+        // Fallback: usar conectividade geral
         if (realInternet) {
-          // Se tem internet mas não sabemos o tipo, assumir WiFi
+          // Assumir WiFi se tem internet
           wifi = true;
+          mobileData = false;
         } else {
-          // Se não tem internet, ambos estão desligados
           wifi = false;
           mobileData = false;
         }
       }
       
-      // Log para debug
-      console.log('Status da conexão:', {
-        hasInternet,
+      // Log detalhado para debug
+      console.log('🔍 Detecção de conexão:', {
+        navigatorOnline: hasInternet,
         realInternet,
         airplaneMode,
         wifi,
         mobileData,
-        navigatorOnline: navigator.onLine
+        networkType: 'connection' in navigator ? (navigator as any).connection?.type : 'não disponível'
       });
       
       return {
@@ -268,12 +265,26 @@ export const useConnectionMonitor = () => {
     checkConnectionStatus().then(setConnectionStatus);
   }, []);
 
+  // Função para teste manual de conexão
+  const testConnection = async () => {
+    console.log('🧪 Teste manual de conexão iniciado...');
+    const status = await checkConnectionStatus();
+    setConnectionStatus(status);
+    
+    if ((window as any).showNotification) {
+      (window as any).showNotification('info', `Teste realizado: WiFi ${status.wifi ? 'ON' : 'OFF'}, Dados ${status.mobileData ? 'ON' : 'OFF'}, Modo Avião ${status.airplaneMode ? 'ON' : 'OFF'}`);
+    }
+    
+    return status;
+  };
+
   return {
     connectionStatus,
     isMonitoring,
     setIsMonitoring,
     triggerPanicMode,
     stopPanicMode,
-    checkConnectionStatus
+    checkConnectionStatus,
+    testConnection
   };
 };

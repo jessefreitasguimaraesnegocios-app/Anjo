@@ -19,7 +19,8 @@ export const ConnectionMonitor = () => {
     connectionStatus, 
     isMonitoring, 
     setIsMonitoring,
-    stopPanicMode 
+    stopPanicMode,
+    testConnection
   } = useConnectionMonitor();
 
   const getStatusIcon = (status: boolean, type: 'wifi' | 'mobile' | 'airplane' | 'internet') => {
@@ -169,14 +170,24 @@ export const ConnectionMonitor = () => {
 
       {/* Botão de Emergência */}
       <div className="mt-6 pt-4 border-t">
-        <Button 
-          variant="outline" 
-          onClick={stopPanicMode}
-          className="w-full gap-2"
-        >
-          <XCircle className="h-4 w-4" />
-          Parar Modo Pânico (se ativo)
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={testConnection}
+            className="flex-1 gap-2"
+          >
+            <CheckCircle className="h-4 w-4" />
+            Testar Conexão
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={stopPanicMode}
+            className="flex-1 gap-2"
+          >
+            <XCircle className="h-4 w-4" />
+            Parar Pânico
+          </Button>
+        </div>
       </div>
     </Card>
   );
