@@ -131,7 +131,20 @@ export const useConnectionMonitor = () => {
       console.log(`🚨 Modo pânico acionado automaticamente: ${reason}`);
       
       // Buscar dispositivo ativo (funciona offline)
-      const devices = await getDevices();
+      let devices: any[] = [];
+      try {
+        devices = await getDevices();
+      } catch (deviceError) {
+        console.warn('⚠️ Erro ao buscar dispositivos (funcionando offline):', deviceError);
+        // Criar dispositivo local se offline
+        devices = [{
+          id: `local_device_${Date.now()}`,
+          name: 'Dispositivo Local',
+          type: 'phone',
+          status: 'online'
+        }];
+      }
+      
       const activeDevice = devices.find(d => d.status === 'online') || devices[0];
       
       if (!activeDevice) {
@@ -139,6 +152,8 @@ export const useConnectionMonitor = () => {
         panicTriggeredRef.current = false;
         return;
       }
+
+      console.log('📱 Usando dispositivo para pânico:', activeDevice);
 
       // Criar gravação de pânico automático com 60 minutos
       const panicRecording = await createRecording({
