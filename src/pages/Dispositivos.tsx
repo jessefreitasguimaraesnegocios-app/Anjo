@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useDevices, Device, CreateDeviceData } from "@/hooks/useDevices";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 export default function Dispositivos() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -39,6 +40,7 @@ export default function Dispositivos() {
 
   const { getDevices, createDevice, updateDevice, deleteDevice, updateDeviceStatus } = useDevices();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Fetch devices
   const { data: devices = [], isLoading } = useQuery({
