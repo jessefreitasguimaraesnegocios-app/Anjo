@@ -17,8 +17,6 @@ import { useConnectionMonitor } from '@/hooks/useConnectionMonitor';
 export const ConnectionMonitor = () => {
   const { 
     connectionStatus, 
-    isMonitoring, 
-    setIsMonitoring,
     stopPanicMode,
     testConnection
   } = useConnectionMonitor();
@@ -64,18 +62,12 @@ export const ConnectionMonitor = () => {
 
   return (
     <Card className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Shield className="h-6 w-6 text-primary" />
-          <h2 className="text-xl font-semibold">Monitor de Segurança</h2>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Monitoramento:</span>
-          <Switch
-            checked={isMonitoring}
-            onCheckedChange={setIsMonitoring}
-          />
-        </div>
+      <div className="flex items-center gap-3 mb-6">
+        <Shield className="h-6 w-6 text-primary" />
+        <h2 className="text-xl font-semibold">Monitor de Segurança</h2>
+        <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500">
+          Ativo
+        </Badge>
       </div>
 
       {/* Status da Conexão */}

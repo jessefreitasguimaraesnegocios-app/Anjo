@@ -17,7 +17,7 @@ export const useConnectionMonitor = () => {
     hasInternet: true
   });
   
-  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [isMonitoring, setIsMonitoring] = useState(true); // Sempre ativado
   const panicTriggeredRef = useRef(false);
   const panicTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
