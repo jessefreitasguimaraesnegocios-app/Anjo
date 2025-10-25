@@ -15,7 +15,8 @@ import {
   Video,
   Mic,
   Trash2,
-  Edit
+  Edit,
+  Wifi
 } from "lucide-react";
 import { useDevices, Device, CreateDeviceData } from "@/hooks/useDevices";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +24,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 export default function Dispositivos() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+  const [remoteLocationForm, setRemoteLocationForm] = useState({
+    email: '',
+    password: ''
+  });
   const [deviceForm, setDeviceForm] = useState<CreateDeviceData>({
     name: '',
     type: 'phone',
@@ -169,6 +174,28 @@ export default function Dispositivos() {
     }
   };
 
+  const handleRemoteLocation = async () => {
+    if (!remoteLocationForm.email.trim() || !remoteLocationForm.password.trim()) {
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', 'Email e senha são obrigatórios');
+      }
+      return;
+    }
+
+    try {
+      // Simular localização remota - em produção seria uma chamada real
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      if ((window as any).showNotification) {
+        (window as any).showNotification('success', 'Comando de localização enviado com sucesso!');
+      }
+      setRemoteLocationForm({ email: '', password: '' });
+    } catch (error) {
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', 'Erro ao enviar comando de localização');
+      }
+    }
+  };
+
   const getDeviceIcon = (type: string) => {
     switch (type) {
       case 'phone':
@@ -221,6 +248,48 @@ export default function Dispositivos() {
             Gerencie e monitore seus dispositivos e de terceiros
           </p>
         </div>
+
+        {/* Localizar Dispositivo Remoto */}
+        <Card className="p-6 mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Wifi className="h-6 w-6 text-primary" />
+            <h2 className="text-xl font-semibold">Localizar Dispositivo Remoto</h2>
+          </div>
+          <p className="text-muted-foreground mb-6">
+            Ative o modo pânico em dispositivos de terceiros usando email e senha
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="space-y-2">
+              <Label htmlFor="remote-email">Email</Label>
+              <Input
+                id="remote-email"
+                type="email"
+                value={remoteLocationForm.email}
+                onChange={(e) => setRemoteLocationForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="remote-password">Senha</Label>
+              <Input
+                id="remote-password"
+                type="password"
+                value={remoteLocationForm.password}
+                onChange={(e) => setRemoteLocationForm(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="Digite a senha"
+              />
+            </div>
+          </div>
+          
+          <Button 
+            onClick={handleRemoteLocation}
+            disabled={!remoteLocationForm.email.trim() || !remoteLocationForm.password.trim()}
+            className="w-full md:w-auto"
+          >
+            Acessar
+          </Button>
+        </Card>
 
         {/* Add Device Button */}
         <div className="mb-8">
