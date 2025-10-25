@@ -711,11 +711,6 @@ export default function Home() {
           <p className="text-muted-foreground">Sua segurança sempre protegida</p>
         </div>
 
-        {/* Connection Monitor */}
-        <div className="mb-8">
-          <ConnectionMonitor />
-        </div>
-
 
         {/* Status Cards - Now clickable */}
         <div className="grid grid-cols-3 gap-4 mb-8 max-w-2xl mx-auto">
@@ -934,6 +929,12 @@ export default function Home() {
             </div>
           </div>
         </Card>
+
+        {/* Connection Monitor */}
+        <div className="mb-8">
+          <ConnectionMonitor />
+        </div>
+
         <Card className="max-w-2xl mx-auto p-6 bg-gradient-card">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-primary" />
