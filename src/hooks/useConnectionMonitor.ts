@@ -30,22 +30,81 @@ export const useConnectionMonitor = () => {
       // Verificar conectividade básica
       const hasInternet = navigator.onLine;
       
-      // Tentar fazer uma requisição para verificar conectividade real
-      const response = await fetch('/api/ping', { 
-        method: 'HEAD',
-        cache: 'no-cache',
-        timeout: 3000
-      }).catch(() => null);
+      // Tentar fazer requisições para diferentes serviços para detectar conectividade real
+      const testUrls = [
+        'https://www.google.com/favicon.ico',
+        'https://www.cloudflare.com/favicon.ico',
+        'https://httpbin.org/status/200'
+      ];
       
-      const realInternet = response?.ok || false;
+      let realInternet = false;
+      let connectionType = 'unknown';
       
-      // Detectar modo avião (quando não há internet mas o dispositivo está "online")
-      const airplaneMode = !hasInternet && navigator.onLine;
+      // Testar conectividade real com timeout curto
+      for (const url of testUrls) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          
+          const response = await fetch(url, {
+            method: 'HEAD',
+            cache: 'no-cache',
+            signal: controller.signal,
+            mode: 'no-cors'
+          });
+          
+          clearTimeout(timeoutId);
+          realInternet = true;
+          break;
+        } catch (error) {
+          console.log(`Teste de conectividade falhou para ${url}:`, error);
+        }
+      }
       
-      // Simular detecção de WiFi e dados móveis
-      // Em um app real, isso seria feito via APIs nativas
-      const wifi = hasInternet && !airplaneMode;
-      const mobileData = hasInternet && !airplaneMode;
+      // Detectar modo avião baseado em múltiplos fatores
+      const airplaneMode = !hasInternet || (!realInternet && navigator.onLine);
+      
+      // Detectar tipo de conexão usando Network Information API se disponível
+      let wifi = false;
+      let mobileData = false;
+      
+      if ('connection' in navigator) {
+        const connection = (navigator as any).connection;
+        if (connection) {
+          const effectiveType = connection.effectiveType;
+          const type = connection.type;
+          
+          // Detectar WiFi
+          wifi = type === 'wifi' || effectiveType === '4g' || effectiveType === '3g';
+          
+          // Detectar dados móveis
+          mobileData = type === 'cellular' || type === 'bluetooth' || type === 'ethernet';
+          
+          console.log('Network Info:', { type, effectiveType, wifi, mobileData });
+        }
+      }
+      
+      // Fallback: se não conseguir detectar tipo específico, usar conectividade geral
+      if (!wifi && !mobileData) {
+        if (realInternet) {
+          // Se tem internet mas não sabemos o tipo, assumir WiFi
+          wifi = true;
+        } else {
+          // Se não tem internet, ambos estão desligados
+          wifi = false;
+          mobileData = false;
+        }
+      }
+      
+      // Log para debug
+      console.log('Status da conexão:', {
+        hasInternet,
+        realInternet,
+        airplaneMode,
+        wifi,
+        mobileData,
+        navigatorOnline: navigator.onLine
+      });
       
       return {
         wifi,
@@ -131,18 +190,29 @@ export const useConnectionMonitor = () => {
       const newStatus = await checkConnectionStatus();
       setConnectionStatus(newStatus);
 
+      console.log('🔍 Verificando condições para modo pânico:', {
+        airplaneMode: newStatus.airplaneMode,
+        wifi: newStatus.wifi,
+        mobileData: newStatus.mobileData,
+        hasInternet: newStatus.hasInternet,
+        panicAlreadyTriggered: panicTriggeredRef.current
+      });
+
       // Verificar condições para acionar modo pânico
       if (newStatus.airplaneMode) {
         // Modo avião ativado
+        console.log('✈️ Modo avião detectado - acionando pânico');
         await triggerPanicMode('Modo avião ativado');
-      } else if (!newStatus.wifi && !newStatus.mobileData) {
-        // Ambos WiFi e dados móveis desligados
+      } else if (!newStatus.wifi && !newStatus.mobileData && !newStatus.hasInternet) {
+        // Ambos WiFi e dados móveis desligados E sem internet
+        console.log('📵 Sem conexão detectada - acionando pânico');
         await triggerPanicMode('Sem conexão de internet');
       } else if (newStatus.hasInternet && panicTriggeredRef.current) {
         // Conexão restaurada - parar modo pânico
+        console.log('📶 Conexão restaurada - parando pânico');
         stopPanicMode();
       }
-    }, 5000); // Verificar a cada 5 segundos
+    }, 3000); // Verificar a cada 3 segundos (mais frequente)
 
     return () => {
       clearInterval(monitorInterval);
@@ -152,28 +222,46 @@ export const useConnectionMonitor = () => {
   // Monitorar mudanças no status online/offline
   useEffect(() => {
     const handleOnline = () => {
-      console.log('📶 Dispositivo online');
+      console.log('📶 Dispositivo online - verificando status');
       checkConnectionStatus().then(setConnectionStatus);
     };
 
     const handleOffline = () => {
-      console.log('📵 Dispositivo offline');
+      console.log('📵 Dispositivo offline - acionando modo pânico');
       setConnectionStatus(prev => ({
         ...prev,
         hasInternet: false,
         wifi: false,
-        mobileData: false
+        mobileData: false,
+        airplaneMode: true
       }));
+      
+      // Acionar modo pânico imediatamente quando offline
+      if (isMonitoring) {
+        triggerPanicMode('Dispositivo offline');
+      }
     };
 
+    // Adicionar listeners para mudanças de conectividade
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    
+    // Adicionar listener para mudanças na Network Information API
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection;
+      if (connection) {
+        connection.addEventListener('change', () => {
+          console.log('🔄 Mudança na conexão detectada');
+          checkConnectionStatus().then(setConnectionStatus);
+        });
+      }
+    }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [isMonitoring]);
 
   // Inicializar status
   useEffect(() => {
