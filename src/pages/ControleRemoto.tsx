@@ -21,9 +21,16 @@ export default function ControleRemoto() {
   const location = useLocation();
   
   // Pegar dados do dispositivo da navegação
-  const deviceData = location.state as { email: string; password: string } || { 
+  const deviceData = location.state as { 
+    email: string; 
+    password: string; 
+    deviceName?: string;
+    deviceType?: string;
+  } || { 
     email: 'jessefreitasguimaraes@gmail.com', 
-    password: '' 
+    password: '',
+    deviceName: 'Dispositivo Remoto',
+    deviceType: 'phone'
   };
 
   const handleAction = async (action: string) => {
@@ -71,7 +78,13 @@ export default function ControleRemoto() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground mb-1">Controlando:</p>
-              <p className="text-lg font-semibold text-green-500">{deviceData.email}</p>
+              <p className="text-lg font-semibold text-green-500">{deviceData.deviceName || deviceData.email}</p>
+              <p className="text-sm text-muted-foreground">{deviceData.email}</p>
+              <p className="text-xs text-muted-foreground">
+                {deviceData.deviceType === 'phone' ? 'Smartphone' : 
+                 deviceData.deviceType === 'pc' ? 'Computador' : 
+                 deviceData.deviceType === 'tablet' ? 'Tablet' : 'Dispositivo'}
+              </p>
             </div>
             <Button 
               variant="outline" 

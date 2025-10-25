@@ -548,39 +548,28 @@ export default function Dispositivos() {
         <div>
           <h2 className="text-xl font-semibold mb-4">Dispositivos de Terceiros ({thirdPartyDevices.length})</h2>
           
-          {/* Activation Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-            <Button className="w-full gap-2" size="lg">
-              <Video className="h-4 w-4" />
-              Ativar via Web
-            </Button>
-            <Button className="w-full gap-2 bg-success hover:bg-success/90" size="lg">
-              <Mic className="h-4 w-4" />
-              Ativar via SMS
-            </Button>
-          </div>
-
           <div className="grid grid-cols-1 gap-4">
             {thirdPartyDevices.map((device) => (
-              <Card key={device.id} className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                      {getDeviceIcon(device.type)}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{device.name}</h3>
-                      <p className="text-xs text-muted-foreground">{device.third_party_email}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        <span>{getTypeLabel(device.type)}</span>
-                        {device.last_seen && (
-                          <>
-                            <span>•</span>
-                            <span>Última vez: {new Date(device.last_seen).toLocaleString()}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+              <Card 
+                key={device.id} 
+                className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate('/controle-remoto', { 
+                  state: { 
+                    email: device.third_party_email, 
+                    password: device.records_password,
+                    deviceName: device.name,
+                    deviceType: device.type
+                  } 
+                })}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                    {getDeviceIcon(device.type)}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{device.name}</h3>
+                    <p className="text-sm text-muted-foreground">{device.third_party_email}</p>
+                    <p className="text-xs text-muted-foreground">{getTypeLabel(device.type)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge 
@@ -592,58 +581,25 @@ export default function Dispositivos() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => handleEdit(device)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(device);
+                      }}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => deleteDeviceMutation.mutate(device.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteDeviceMutation.mutate(device.id);
+                      }}
                       className="text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-
-                {/* Control Buttons Grid */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    className="gap-2 bg-primary hover:bg-primary/90"
-                    size="sm" 
-                    onClick={() => handleDeviceAction("Vídeo", device.id)}
-                  >
-                    <Video className="h-4 w-4" />
-                    Vídeo
-                  </Button>
-
-                  <Button 
-                    className="gap-2 bg-purple-600 hover:bg-purple-700"
-                    size="sm" 
-                    onClick={() => handleDeviceAction("Áudio", device.id)}
-                  >
-                    <Mic className="h-4 w-4" />
-                    Áudio
-                  </Button>
-
-                  <Button 
-                    className="gap-2 bg-success hover:bg-success/90"
-                    size="sm" 
-                    onClick={() => handleDeviceAction("Local", device.id)}
-                  >
-                    <MapPin className="h-4 w-4" />
-                    Local
-                  </Button>
-
-                  <Button 
-                    className="gap-2 bg-orange-600 hover:bg-orange-700"
-                    size="sm" 
-                    onClick={() => handleDeviceAction("Live", device.id)}
-                  >
-                    <Radio className="h-4 w-4" />
-                    Live
-                  </Button>
                 </div>
               </Card>
             ))}
