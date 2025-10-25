@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Shield, AlertCircle, Camera, Mic, MapPin, Activity, Square, Play } from 'lucide-react';
 import { useDevices } from '@/hooks/useDevices';
 import { useRecordings } from '@/hooks/useRecordings';
+import { ConnectionMonitor } from '@/components/ConnectionMonitor';
 // import { useGlobalRecording } from '@/hooks/useGlobalRecording';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -708,6 +709,11 @@ export default function Home() {
             Anjo da Guarda
           </h1>
           <p className="text-muted-foreground">Sua segurança sempre protegida</p>
+        </div>
+
+        {/* Connection Monitor */}
+        <div className="mb-8">
+          <ConnectionMonitor />
         </div>
 
 
