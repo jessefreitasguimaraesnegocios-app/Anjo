@@ -183,15 +183,26 @@ export default function Dispositivos() {
     }
 
     try {
-      // Simular localização remota - em produção seria uma chamada real
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simular validação - em produção seria uma chamada real
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       if ((window as any).showNotification) {
-        (window as any).showNotification('success', 'Comando de localização enviado com sucesso!');
+        (window as any).showNotification('success', 'Acesso autorizado! Redirecionando...');
       }
-      setRemoteLocationForm({ email: '', password: '' });
+      
+      // Navegar para a tela de controle remoto com os dados do dispositivo
+      setTimeout(() => {
+        navigate('/controle-remoto', { 
+          state: { 
+            email: remoteLocationForm.email, 
+            password: remoteLocationForm.password 
+          } 
+        });
+      }, 1500);
+      
     } catch (error) {
       if ((window as any).showNotification) {
-        (window as any).showNotification('error', 'Erro ao enviar comando de localização');
+        (window as any).showNotification('error', 'Erro ao validar credenciais');
       }
     }
   };

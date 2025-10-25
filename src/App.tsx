@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import Evidencias from "./pages/Evidencias";
 import MeusRegistros from "./pages/MeusRegistros";
 import Dispositivos from "./pages/Dispositivos";
+import ControleRemoto from "./pages/ControleRemoto";
 import Planos from "./pages/Planos";
 import NotFound from "./pages/NotFound";
 
@@ -47,6 +48,7 @@ const AppContent = () => {
         <Route path="/evidencias" element={<Evidencias />} />
         <Route path="/meus-registros" element={<MeusRegistros />} />
         <Route path="/dispositivos" element={<Dispositivos />} />
+        <Route path="/controle-remoto" element={<ControleRemoto />} />
         <Route path="/planos" element={<Planos />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
