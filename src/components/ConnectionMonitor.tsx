@@ -166,6 +166,16 @@ export const ConnectionMonitor = () => {
             </p>
           </div>
         </div>
+
+        <div className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg">
+          <CheckCircle className="h-5 w-5 text-green-500" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Funciona Offline</p>
+            <p className="text-xs text-muted-foreground">
+              ✓ Gravações são salvas localmente mesmo sem internet
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Botão de Emergência */}

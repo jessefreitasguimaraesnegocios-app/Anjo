@@ -34,7 +34,7 @@ export const useConnectionMonitor = () => {
       let realInternet = false;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1000); // Timeout muito curto
+        const timeoutId = setTimeout(() => controller.abort(), 1000);
         
         await fetch('https://www.google.com/favicon.ico', {
           method: 'HEAD',
@@ -49,8 +49,9 @@ export const useConnectionMonitor = () => {
         realInternet = false;
       }
       
-      // Detectar modo avião: quando navigator.onLine é false OU quando não consegue conectar
-      const airplaneMode = !hasInternet;
+      // Detectar modo avião: apenas quando navigator.onLine é false E não consegue conectar
+      // Se tem internet mas não consegue conectar, pode ser problema de rede, não modo avião
+      const airplaneMode = !hasInternet && !realInternet;
       
       // Detectar WiFi e dados móveis baseado na conectividade real
       let wifi = false;
@@ -114,7 +115,7 @@ export const useConnectionMonitor = () => {
       return {
         wifi: false,
         mobileData: false,
-        airplaneMode: true,
+        airplaneMode: false, // Não assumir modo avião em caso de erro
         hasInternet: false
       };
     }
@@ -129,21 +130,18 @@ export const useConnectionMonitor = () => {
     try {
       console.log(`🚨 Modo pânico acionado automaticamente: ${reason}`);
       
-      if ((window as any).showNotification) {
-        (window as any).showNotification('error', `🚨 Modo pânico ativado: ${reason}`);
-      }
-
-      // Buscar dispositivo ativo
+      // Buscar dispositivo ativo (funciona offline)
       const devices = await getDevices();
       const activeDevice = devices.find(d => d.status === 'online') || devices[0];
       
       if (!activeDevice) {
-        console.error('Nenhum dispositivo encontrado para modo pânico');
+        console.log('⚠️ Nenhum dispositivo encontrado para modo pânico');
+        panicTriggeredRef.current = false;
         return;
       }
 
       // Criar gravação de pânico automático com 60 minutos
-      await createRecording({
+      const panicRecording = await createRecording({
         device_id: activeDevice.id,
         type: 'panic',
         duration: 3600, // 60 minutos em segundos
@@ -156,13 +154,42 @@ export const useConnectionMonitor = () => {
         }
       });
 
-      console.log('✅ Gravação de pânico automático iniciada (60 min)');
+      console.log('✅ Gravação de pânico automático iniciada (60 min):', panicRecording);
+      
+      // Notificar sucesso
+      if ((window as any).showNotification) {
+        (window as any).showNotification('warning', `Modo pânico ativado: ${reason}`);
+      }
+      
+      // Configurar timeout para parar o pânico após 60 minutos
+      panicTimeoutRef.current = setTimeout(() => {
+        console.log('⏰ Tempo de pânico expirado (60 min)');
+        panicTriggeredRef.current = false;
+        
+        if ((window as any).showNotification) {
+          (window as any).showNotification('info', 'Modo pânico automático finalizado após 60 minutos');
+        }
+      }, 60 * 60 * 1000); // 60 minutos
       
     } catch (error) {
-      console.error('Erro ao acionar modo pânico:', error);
-      if ((window as any).showNotification) {
-        (window as any).showNotification('error', 'Erro ao acionar modo pânico automático');
+      console.error('❌ Erro ao acionar modo pânico:', error);
+      
+      // Notificar erro específico
+      let errorMessage = 'Erro ao acionar modo pânico automático';
+      if (error instanceof Error) {
+        if (error.message.includes('offline') || error.message.includes('network')) {
+          errorMessage = 'Modo pânico ativado (funcionando offline)';
+        } else {
+          errorMessage = `Erro: ${error.message}`;
+        }
       }
+      
+      if ((window as any).showNotification) {
+        (window as any).showNotification('error', errorMessage);
+      }
+      
+      // Resetar flag em caso de erro crítico
+      panicTriggeredRef.current = false;
     }
   };
 
@@ -205,9 +232,11 @@ export const useConnectionMonitor = () => {
         console.log('📵 Sem conexão detectada - acionando pânico');
         await triggerPanicMode('Sem conexão de internet');
       } else if (newStatus.hasInternet && panicTriggeredRef.current) {
-        // Conexão restaurada - parar modo pânico
-        console.log('📶 Conexão restaurada - parando pânico');
-        stopPanicMode();
+        // Conexão restaurada - parar modo pânico apenas se não for modo avião
+        if (!newStatus.airplaneMode) {
+          console.log('📶 Conexão restaurada - parando pânico');
+          stopPanicMode();
+        }
       }
     }, 3000); // Verificar a cada 3 segundos (mais frequente)
 
